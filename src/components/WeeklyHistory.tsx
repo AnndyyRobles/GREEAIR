@@ -97,7 +97,7 @@ export default function WeeklyHistory({ stationId }: Props) {
               </div>
               
               <div className="flex flex-col items-center space-y-3">
-                <div className={`w-full h-2 ${qualityInfo.color} rounded-full`} />
+                {/* <div className={`w-full h-2 ${qualityInfo.color} rounded-full`} /> */}
                 
                 <div className="text-center">
                 <div className="text-4xl md:text-4xl font-extrabold text-gray-100">

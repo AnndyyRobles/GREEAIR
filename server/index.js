@@ -134,6 +134,8 @@ app.get('/api/stations/:id/alerts', async (req, res) => {
       JOIN mediciones m ON a.id_medicion = m.id_medicion
       JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
       WHERE m.id_estacion = $1
+      AND m.fecha <= NOW()  -- Filtrar para excluir fechas futuras
+      AND m.fecha::date = NOW()::date  -- Solo alertas del día actual
       ORDER BY m.fecha DESC
       LIMIT 10
     `, [id]);
@@ -143,6 +145,8 @@ app.get('/api/stations/:id/alerts', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 // Get weekly history for a station
 app.get('/api/stations/:id/history', async (req, res) => {
@@ -154,7 +158,8 @@ app.get('/api/stations/:id/history', async (req, res) => {
       FROM mediciones m
       JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
       WHERE m.id_estacion = $1
-      AND m.fecha >= NOW() - INTERVAL '7 days'
+      AND m.fecha >= (NOW()::date - INTERVAL '6 days')  -- Incluye hoy y los seis días anteriores
+      AND m.fecha < NOW()  -- Asegura que no se incluyan fechas futuras
       ORDER BY m.fecha DESC
     `, [id]);
     res.json(result.rows);
@@ -164,20 +169,25 @@ app.get('/api/stations/:id/history', async (req, res) => {
   }
 });
 
+
+
 // Get main pollutant for a station
 app.get('/api/stations/:id/pollutant', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Consulta para obtener el contaminante con mayor concentración del día actual
     const result = await pool.query(`
       SELECT c.nombre as contaminante, c.descripcion,
              m.valor_concentracion
       FROM mediciones m
       JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
       WHERE m.id_estacion = $1
-      ORDER BY m.valor_calidad DESC
+      AND m.fecha::date = NOW()::date  -- Solo mediciones del día actual
+      ORDER BY m.valor_concentracion DESC  -- Obtener el contaminante con la mayor concentración
       LIMIT 1
     `, [id]);
-    
+
     if (result.rows.length === 0) {
       return res.json({
         contaminante: 'No data',
@@ -185,12 +195,15 @@ app.get('/api/stations/:id/pollutant', async (req, res) => {
         valor_concentracion: 0
       });
     }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error(`Error en /api/stations/${req.params.id}/pollutant:`, error);
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 // Get pollutant trends for a station
 app.get('/api/stations/:id/trends', async (req, res) => {
@@ -203,6 +216,7 @@ app.get('/api/stations/:id/trends', async (req, res) => {
       JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
       WHERE m.id_estacion = $1
       AND m.fecha >= NOW() - INTERVAL '24 hours'
+      AND m.fecha <= NOW()  -- Excluir fechas futuras
       ORDER BY m.fecha ASC
     `, [id]);
     res.json(result.rows);
@@ -211,6 +225,7 @@ app.get('/api/stations/:id/trends', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Get AQI for a station
 app.get('/api/stations/:id/aqi', async (req, res) => {
@@ -240,6 +255,30 @@ app.get('/api/stations/:id/aqi', async (req, res) => {
 });
 
 // Get pollutants comparison for a station
+// app.get('/api/stations/:id/pollutants/comparison', async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const result = await pool.query(`
+//       WITH CurrentValues AS (
+//         SELECT c.nombre as contaminante,
+//                m.valor_concentracion as valor_actual,
+//                50 as limite_permitido
+//         FROM mediciones m
+//         JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
+//         WHERE m.id_estacion = $1
+//         AND m.fecha >= NOW() - INTERVAL '1 hour'
+//         AND m.fecha <= NOW()  -- Excluir fechas futuras
+//       )
+//       SELECT *
+//       FROM CurrentValues
+//       ORDER BY valor_actual DESC
+//     `, [id]);
+//     res.json(result.rows);
+//   } catch (error) {
+//     console.error(`Error en /api/stations/${req.params.id}/pollutants/comparison:`, error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 app.get('/api/stations/:id/pollutants/comparison', async (req, res) => {
   try {
     const { id } = req.params;
@@ -251,7 +290,8 @@ app.get('/api/stations/:id/pollutants/comparison', async (req, res) => {
         FROM mediciones m
         JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
         WHERE m.id_estacion = $1
-        AND m.fecha >= NOW() - INTERVAL '1 hour'
+        AND m.fecha <= NOW()
+        AND m.fecha::date = NOW()::date
       )
       SELECT *
       FROM CurrentValues
@@ -264,10 +304,66 @@ app.get('/api/stations/:id/pollutants/comparison', async (req, res) => {
   }
 });
 
+
+app.get('/api/stations/:id/history', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT m.fecha, c.nombre as contaminante, m.valor_concentracion,
+             m.indice_calidad, m.valor_calidad
+      FROM mediciones m
+      JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
+      WHERE m.id_estacion = $1
+      AND m.fecha >= CURRENT_DATE
+      AND m.fecha < CURRENT_DATE + INTERVAL '1 day'
+      ORDER BY m.fecha DESC
+    `, [id]);
+    
+    console.log("Datos del historial diario:", result.rows);  // Agrega este log
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error(`Error en /api/stations/${req.params.id}/history:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 // Agregar nuevo endpoint para estaciones cercanas
+// app.get('/api/stations/:id/nearby', async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const result = await pool.query(`
+//       WITH StationLocation AS (
+//         SELECT latitud, longitud
+//         FROM estaciones
+//         WHERE id_estacion = $1
+//       )
+//       SELECT e.*
+//       FROM estaciones e, StationLocation s
+//       WHERE e.id_estacion != $1
+//       AND earth_distance(
+//         ll_to_earth(e.latitud, e.longitud),
+//         ll_to_earth(s.latitud, s.longitud)
+//       ) <= 5000  -- 5km radio
+//       ORDER BY earth_distance(
+//         ll_to_earth(e.latitud, e.longitud),
+//         ll_to_earth(s.latitud, s.longitud)
+//       )
+//       LIMIT 5;
+//     `, [id]);
+
+//     res.json(result.rows);
+//   } catch (error) {
+//     console.error('Error al obtener estaciones cercanas:', error);
+//     res.status(500).json({ error: 'Error al obtener estaciones cercanas' });
+//   }
+// });
 app.get('/api/stations/:id/nearby', async (req, res) => {
   try {
     const { id } = req.params;
+    const distance = parseFloat(req.query.distance) || 400; // Distancia predeterminada de 400 km si no se proporciona
+
     const result = await pool.query(`
       WITH StationLocation AS (
         SELECT latitud, longitud
@@ -277,23 +373,22 @@ app.get('/api/stations/:id/nearby', async (req, res) => {
       SELECT e.*
       FROM estaciones e, StationLocation s
       WHERE e.id_estacion != $1
-      AND earth_distance(
-        ll_to_earth(e.latitud, e.longitud),
-        ll_to_earth(s.latitud, s.longitud)
-      ) <= 5000  -- 5km radio
-      ORDER BY earth_distance(
-        ll_to_earth(e.latitud, e.longitud),
-        ll_to_earth(s.latitud, s.longitud)
-      )
+      AND 111.045 * DEGREES(ACOS(COS(RADIANS(e.latitud)) * COS(RADIANS(s.latitud)) *
+       COS(RADIANS(e.longitud) - RADIANS(s.longitud)) + SIN(RADIANS(e.latitud)) *
+       SIN(RADIANS(s.latitud)))) <= $2
+      ORDER BY 111.045 * DEGREES(ACOS(COS(RADIANS(e.latitud)) * COS(RADIANS(s.latitud)) *
+       COS(RADIANS(e.longitud) - RADIANS(s.longitud)) + SIN(RADIANS(e.latitud)) *
+       SIN(RADIANS(s.latitud))))
       LIMIT 5;
-    `, [id]);
+    `, [id, distance]);
 
     res.json(result.rows);
   } catch (error) {
-    console.error('Error al obtener estaciones cercanas:', error);
-    res.status(500).json({ error: 'Error al obtener estaciones cercanas' });
+    console.error('Error al obtener estaciones cercanas:', error); // Log detallado del error
+    res.status(500).json({ error: 'Error al obtener estaciones cercanas', detalle: error.message });
   }
 });
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
@@ -304,4 +399,10 @@ app.listen(port, () => {
     port: process.env.DB_PORT,
     user: process.env.DB_USER
   });
+});
+
+app._router.stack.forEach(function(r) {
+  if (r.route && r.route.path) {
+    console.log(r.route.path);
+  }
 });

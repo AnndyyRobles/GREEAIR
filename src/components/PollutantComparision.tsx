@@ -31,7 +31,7 @@ interface PollutantData {
 }
 
 export default function PollutantComparison({ stationId }: Props) {
-  const { data: pollutants } = useQuery<PollutantData[]>({
+  const { data: pollutants, isLoading, error } = useQuery<PollutantData[]>({
     queryKey: ['pollutants', stationId],
     queryFn: async () => {
       const { data } = await axios.get(`/api/stations/${stationId}/pollutants/comparison`);
@@ -39,7 +39,9 @@ export default function PollutantComparison({ stationId }: Props) {
     },
   });
 
-  if (!pollutants?.length) return null;
+  if (isLoading) return <p className="text-gray-100">Cargando datos...</p>;
+  if (error) return <p className="text-red-500">Error al cargar los datos de contaminantes.</p>;
+  if (!pollutants?.length) return <p className="text-gray-100">No hay datos disponibles.</p>;
 
   const data = {
     labels: pollutants.map(p => p.contaminante),

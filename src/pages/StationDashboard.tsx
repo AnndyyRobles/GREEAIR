@@ -9,6 +9,10 @@ import PollutantTrends from '../components/PollutantTrends';
 import StationInfo from '../components/StationInfo';
 import AirQualityIndex from '../components/AirQualityIndex';
 import PollutantComparison from '../components/PollutantComparision';
+import Map from '../components/Map';
+import NearbyStations from '../components/NearbyStations';
+
+
 
 export default function StationDashboard() {
   const { id } = useParams();
@@ -44,6 +48,11 @@ export default function StationDashboard() {
   return (
     <div className="space-y-6">
       <StationInfo station={station} />
+
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <Map stations={[station]} onStationSelect={(selectedStation) => console.log(selectedStation)} />
+      </div>
+
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
@@ -61,6 +70,10 @@ export default function StationDashboard() {
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <PollutantComparison stationId={stationId} />
         </div>
+      </div>
+
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <NearbyStations stationId={stationId} /> 
       </div>
 
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">

@@ -54,22 +54,32 @@ export default function Layout() {
             </h1>
           </Link>
 
-          {/* Login/Logout Button */}
-          {isLoggedIn ? (
-            <button
-              onClick={handleLogout}
-              className="text-white bg-red-500 hover:bg-red-400 px-6 py-2 rounded-full transition-colors"
-            >
-              Logout
-            </button>
-          ) : (
-            <Link
-              to="/login"
-              className="text-white bg-emerald-400 hover:bg-emerald-300 px-6 py-2 rounded-full transition-colors"
-            >
-              Login
-            </Link>
-          )}
+          {/* Buttons */}
+          <div className="flex items-center space-x-4">
+            {isLoggedIn ? (
+              <>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="text-white bg-blue-500 hover:bg-blue-400 px-6 py-2 rounded-full transition-colors"
+                >
+                  Mi Perfil
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="text-white bg-red-500 hover:bg-red-400 px-6 py-2 rounded-full transition-colors"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="text-white bg-emerald-400 hover:bg-emerald-300 px-6 py-2 rounded-full transition-colors"
+              >
+                Log in
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -80,4 +90,5 @@ export default function Layout() {
     </div>
   );
 }
+
 

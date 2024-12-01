@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import StationDashboard from './pages/StationDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
+// import UserProfile from './pages/UserProfile';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +27,8 @@ function App() {
             <Route index element={<LandingPage />} />
             <Route path="station/:id" element={<StationDashboard />} />
             <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
+            <Route path="register" element={<Register />} />
+            {/* <Route path="profile" element={<UserProfile />} /> */}
           </Route>
         </Routes>
       </Router>

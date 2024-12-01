@@ -38,6 +38,22 @@ app.use((req, res, next) => {
   next();
 });
 
+// Get all stations with coordinates
+app.get('/api/stations/coordinates', async (req, res) => {
+  try {
+    console.log("Iniciando consulta para /api/stations/coordinates...");
+    const result = await pool.query(`
+      SELECT nombre, latitud, longitud
+      FROM estaciones
+    `);
+    console.log("Resultados de la consulta:", result.rows); // Log para depuración
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error en /api/stations/coordinates:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all regions
 app.get('/api/regions', async (req, res) => {
   try {
@@ -48,6 +64,7 @@ app.get('/api/regions', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Get stations grouped by region
 app.get('/api/stations/by-region', async (req, res) => {
@@ -73,6 +90,7 @@ app.get('/api/stations/by-region', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Get station details
 app.get('/api/stations/:id', async (req, res) => {
@@ -388,6 +406,9 @@ app.get('/api/stations/:id/nearby', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener estaciones cercanas', detalle: error.message });
   }
 });
+
+
+
 
 
 const port = process.env.PORT || 3000;

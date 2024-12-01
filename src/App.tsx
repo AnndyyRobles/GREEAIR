@@ -4,6 +4,8 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Layout from './components/Layout';
 import LandingPage from './pages/LandingPage';
 import StationDashboard from './pages/StationDashboard';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +25,8 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<LandingPage />} />
             <Route path="station/:id" element={<StationDashboard />} />
+            <Route path="login" element={<Login />} />
+          <Route path="register" element={<Register />} />
           </Route>
         </Routes>
       </Router>

@@ -18,25 +18,27 @@ export default function StationDashboard() {
   const stationId = Number(id);
 
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  useEffect(() => {
-    setIsLoggedIn(!!user.id_usuario); // Verificar si hay sesión activa
-  }, []);
+  // Verificar si el usuario está logueado
+  const isLoggedIn = !!user.id_usuario;
 
-  // Verificar si el usuario está suscrito
-  const { data: subscriptionData, refetch: refetchSubscription } = useQuery({
+  // Consultar suscripción
+  const { refetch: refetchSubscription } = useQuery({
     queryKey: ['subscription', stationId, user.id_usuario],
     queryFn: async () => {
       const { data } = await axios.get(`/api/users/${user.id_usuario}/stations/${stationId}`);
       return data;
     },
-    enabled: isLoggedIn, // Solo ejecutar si el usuario está logeado
-    onSuccess: (data) => setIsSubscribed(data.isSubscribed),
+    enabled: isLoggedIn,
+    onSuccess: (data) => {
+      console.log('Suscripción verificada:', data);
+      setIsSubscribed(data.isSubscribed);
+    },
+    onError: (err) => console.error('Error verificando suscripción:', err),
   });
 
-  // Suscribir al usuario
+  // Mutaciones de suscripción
   const subscribeMutation = useMutation({
     mutationFn: async () => {
       await axios.post(`/api/users/${user.id_usuario}/stations/${stationId}`);
@@ -47,7 +49,6 @@ export default function StationDashboard() {
     },
   });
 
-  // Desuscribir al usuario
   const unsubscribeMutation = useMutation({
     mutationFn: async () => {
       await axios.delete(`/api/users/${user.id_usuario}/stations/${stationId}`);
@@ -66,32 +67,17 @@ export default function StationDashboard() {
     }
   };
 
+  // Cargar datos de la estación
   const { data: station, isLoading, error } = useQuery({
     queryKey: ['station', stationId],
     queryFn: async () => {
       const { data } = await axios.get(`/api/stations/${stationId}`);
       return data;
     },
-    retry: 3,
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-emerald-400"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen text-red-400">
-        <p>Error al cargar los datos de la estación. Por favor, intente nuevamente.</p>
-      </div>
-    );
-  }
-
-  if (!station) return null;
+  if (isLoading) return <p>Cargando...</p>;
+  if (error) return <p>Error al cargar la estación.</p>;
 
   return (
     <div className="space-y-6">

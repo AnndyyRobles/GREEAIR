@@ -585,6 +585,21 @@ app.get('/api/stations/:id/alerts/latest', async (req, res) => {
   }
 });
 
+app.delete('/api/users/:userId/stations/:stationId', async (req, res) => {
+  try {
+    const { userId, stationId } = req.params;
+    await pool.query(
+      'DELETE FROM usuario_estaciones WHERE id_usuario = $1 AND id_estacion = $2',
+      [userId, stationId]
+    );
+    res.status(200).json({ message: 'Estación eliminada correctamente' });
+  } catch (error) {
+    console.error('Error al eliminar la estación:', error);
+    res.status(500).json({ error: 'Error al eliminar la estación' });
+  }
+});
+
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {

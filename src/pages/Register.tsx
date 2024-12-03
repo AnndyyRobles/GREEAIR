@@ -35,7 +35,7 @@ export default function Register() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post("/api/register", formData);
+      await axios.post("/api/users/register", formData);
       setSuccess(true);
       setFormData({
         nombre: "",
@@ -88,6 +88,7 @@ export default function Register() {
               onChange={handleChange}
               className="w-full p-3 rounded-lg bg-gray-700 text-white"
               placeholder="Ingresa tu correo"
+              autoComplete="new-email"
               required
             />
           </div>

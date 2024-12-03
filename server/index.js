@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pkg from 'pg';
+import bcrypt from 'bcrypt';
 const { Pool } = pkg;
 
 dotenv.config();
@@ -17,6 +18,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'root',
   port: parseInt(process.env.DB_PORT || '5432'),
 });
+
 
 // Middleware para manejar errores de conexión a la BD
 app.use(async (req, res, next) => {
@@ -164,8 +166,6 @@ app.get('/api/stations/:id/alerts', async (req, res) => {
   }
 });
 
-
-
 // Get weekly history for a station
 app.get('/api/stations/:id/history', async (req, res) => {
   try {
@@ -186,8 +186,6 @@ app.get('/api/stations/:id/history', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-
 
 // Get main pollutant for a station
 app.get('/api/stations/:id/pollutant', async (req, res) => {
@@ -222,7 +220,6 @@ app.get('/api/stations/:id/pollutant', async (req, res) => {
 });
 
 
-
 // Get pollutant trends for a station
 app.get('/api/stations/:id/trends', async (req, res) => {
   try {
@@ -243,7 +240,6 @@ app.get('/api/stations/:id/trends', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 // Get AQI for a station
 app.get('/api/stations/:id/aqi', async (req, res) => {
@@ -407,8 +403,187 @@ app.get('/api/stations/:id/nearby', async (req, res) => {
   }
 });
 
+// Endpoint para crear un usuario
+// app.post('/api/users/register', async (req, res) => {
+//   try {
+//     const { nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, contraseña } = req.body;
+//     const hashedPassword = await bcrypt.hash(contraseña, 10); // Hash de contraseña
+
+//     const result = await pool.query(`
+//       INSERT INTO usuarios (nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, contraseña)
+//       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+//       RETURNING id_usuario
+//     `, [nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, hashedPassword]);
+
+//     res.status(201).json({ id_usuario: result.rows[0].id_usuario });
+//   } catch (error) {
+//     console.error('Error en /api/users/register:', error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+app.post('/api/users/register', async (req, res) => {
+  try {
+    console.log('Datos recibidos en el servidor:', req.body); // Verificar datos recibidos
+    const { nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, contraseña } = req.body;
+
+    // Verificar si algún campo está vacío
+    if (!nombre || !correo || !ubicacion || !telefono || !direccion || !id_region || !tipo_usuario || !contraseña) {
+      return res.status(400).json({ error: 'Todos los campos son obligatorios.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(contraseña, 10);
+    const result = await pool.query(`
+      INSERT INTO usuarios (nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, contraseña)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id_usuario
+    `, [nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, hashedPassword]);
+
+    res.status(201).json({ id_usuario: result.rows[0].id_usuario });
+  } catch (error) {
+    console.error('Error en /api/users/register:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para login de usuario
+app.post('/api/users/login', async (req, res) => {
+  try {
+    const { correo, contraseña } = req.body;
+
+    const result = await pool.query('SELECT * FROM usuarios WHERE correo = $1', [correo]);
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+
+    const user = result.rows[0];
+    const isPasswordValid = await bcrypt.compare(contraseña, user.contraseña);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Contraseña incorrecta' });
+    }
+
+    // Generar token (opcional)
+    res.json({ id_usuario: user.id_usuario, tipo_usuario: user.tipo_usuario });
+  } catch (error) {
+    console.error('Error en /api/users/login:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verficar si usuario esta suscrito
+app.get('/api/users/:userId/stations/:stationId', async (req, res) => {
+  try {
+    const { userId, stationId } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM usuario_estaciones WHERE id_usuario = $1 AND id_estacion = $2',
+      [userId, stationId]
+    );
+
+    res.json({ isSubscribed: result.rows.length > 0 });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al verificar suscripción' });
+  }
+});
+
+// Subscribir un usuario a una estacion 
+app.post('/api/users/:userId/stations/:stationId', async (req, res) => {
+  try {
+    const { userId, stationId } = req.params;
+    await pool.query(
+      'INSERT INTO usuario_estaciones (id_usuario, id_estacion) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [userId, stationId]
+    );
+    res.status(201).json({ message: 'Usuario suscrito a la estación' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al subscribirse a la estación' });
+  }
+});
+
+// Desuscribir un usuario a una estacion
+app.delete('/api/users/:userId/stations/:stationId', async (req, res) => {
+  try {
+    const { userId, stationId } = req.params;
+    await pool.query(
+      'DELETE FROM usuario_estaciones WHERE id_usuario = $1 AND id_estacion = $2',
+      [userId, stationId]
+    );
+    res.status(200).json({ message: 'Usuario desuscrito de la estación' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al desuscribirse de la estación' });
+  }
+});
+
+// Endpoint para obtener información del usuario
+app.get('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM usuarios WHERE id_usuario = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(`Error en /api/users/${id}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para obtener las estaciones suscritas por el usuario
+app.get('/api/users/:id/stations', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log(`ID del usuario recibido: ${id}`);
+
+    const result = await pool.query(`
+      SELECT 
+        e.id_estacion, 
+        e.nombre, 
+        r.nombre AS region
+      FROM 
+        estaciones e
+      JOIN 
+        usuario_estaciones ue ON e.id_estacion = ue.id_estacion
+      JOIN 
+        regiones r ON e.id_region = r.id_region
+      WHERE 
+        ue.id_usuario = $1
+    `, [id]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error(`Error en /api/users/${id}/stations:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 
+
+// Endpoint para obtener las últimas 7 alertas de una estación
+app.get('/api/stations/:id/alerts/latest', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT a.*, m.fecha, m.valor_concentracion as concentracion, c.nombre as contaminante
+      FROM alertas a
+      JOIN mediciones m ON a.id_medicion = m.id_medicion
+      JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
+      WHERE m.id_estacion = $1
+      AND m.fecha <= NOW()
+      AND m.fecha::date = NOW()::date
+      ORDER BY m.fecha DESC
+      LIMIT 7
+    `, [id]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error(`Error en /api/stations/${id}/alerts/latest:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 
 const port = process.env.PORT || 3000;

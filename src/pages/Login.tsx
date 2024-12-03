@@ -1,11 +1,42 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+// import React, { useState } from 'react';
+// import axios from 'axios';
+// import { useNavigate } from 'react-router-dom';
+
+// export default function Login() {
+//   const [correo, setCorreo] = useState('');
+//   const [contraseña, setContraseña] = useState('');
+//   const [error, setError] = useState('');
+//   const navigate = useNavigate();
+
+//   const handleLogin = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     try {
+//       const response = await axios.post('/api/users/login', { correo, contraseña });
+//       const { id_usuario, tipo_usuario } = response.data;
+
+//       // Guardar datos del usuario en localStorage (o cookies)
+//       localStorage.setItem('user', JSON.stringify({ id_usuario, tipo_usuario }));
+
+//       // Redirigir según tipo de usuario
+//       if (tipo_usuario === 'administrador') {
+//         navigate('/admin/dashboard');
+//       } else {
+//         navigate('/');
+//       }
+//     } catch (error: any) {
+//       setError(error.response?.data?.error || 'Error al iniciar sesión');
+//     }
+//   };
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
 export default function Login() {
   const [correo, setCorreo] = useState('');
   const [contraseña, setContraseña] = useState('');
   const [error, setError] = useState('');
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -14,17 +45,15 @@ export default function Login() {
       const response = await axios.post('/api/users/login', { correo, contraseña });
       const { id_usuario, tipo_usuario } = response.data;
 
-      // Guardar datos del usuario en localStorage (o cookies)
-      localStorage.setItem('user', JSON.stringify({ id_usuario, tipo_usuario }));
+      console.log('API Response:', response.data);
 
-      // Redirigir según tipo de usuario
-      if (tipo_usuario === 'administrador') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/');
-      }
+      localStorage.setItem('user', JSON.stringify({ id_usuario, tipo_usuario }));
+      login({ id_usuario, tipo_usuario });  // Actualizar estado global
+      navigate('/');
     } catch (error: any) {
       setError(error.response?.data?.error || 'Error al iniciar sesión');
+
+      console.error('Login error:', error);
     }
   };
 

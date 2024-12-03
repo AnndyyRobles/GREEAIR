@@ -1,24 +1,40 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
+import { FaTrash } from 'react-icons/fa'; // Asegúrate de instalar react-icons
 
 interface Station {
   id_estacion: number;
   nombre: string;
-  ubicacion: string;
+  region: string; // Cambiado para usar "region" en vez de "ubicacion"
 }
 
 interface Props {
   userId: number;
-  onStationSelect: (stationId: number) => void; // Asegúrate de que esto esté definido
+  onStationSelect: (stationId: number) => void; // Función para seleccionar una estación
 }
 
 export default function UserStations({ userId, onStationSelect }: Props) {
-  const { data, error, isLoading } = useQuery<Station[]>({
+  // Obtener estaciones suscritas
+  const { data, error, isLoading, refetch } = useQuery<Station[]>({
     queryKey: ['stations', userId],
     queryFn: async () => {
       const { data } = await axios.get(`/api/users/${userId}/stations`);
-      console.log('Datos de estaciones recibidos:', data); // Verifica los datos aquí
+      console.log('Datos de estaciones recibidos:', data);
       return data;
+    },
+  });
+
+  // Mutación para eliminar una estación
+  const deleteMutation = useMutation({
+    mutationFn: async (stationId: number) => {
+      await axios.delete(`/api/users/${userId}/stations/${stationId}`);
+    },
+    onSuccess: () => {
+      console.log('Estación eliminada correctamente');
+      refetch(); // Refrescar la lista de estaciones
+    },
+    onError: (error) => {
+      console.error('Error al eliminar la estación:', error);
     },
   });
 
@@ -34,16 +50,27 @@ export default function UserStations({ userId, onStationSelect }: Props) {
         {data.map((station) => (
           <li
             key={station.id_estacion}
-            onClick={() => onStationSelect(station.id_estacion)}
-            className="cursor-pointer bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition"
+            className="bg-gray-700 p-4 rounded-lg flex justify-between items-center hover:bg-gray-600 transition"
           >
-            <p className="text-gray-100 font-semibold">{station.nombre}</p>
-            <p className="text-gray-400 text-sm">{station.region}</p>
+            {/* Información de la estación */}
+            <div onClick={() => onStationSelect(station.id_estacion)} className="cursor-pointer">
+              <p className="text-gray-100 font-semibold">{station.nombre}</p>
+              <p className="text-gray-400 text-sm">{station.region}</p>
+            </div>
+
+            {/* Ícono de basura para eliminar */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Evitar que se active la selección de la estación al eliminar
+                deleteMutation.mutate(station.id_estacion);
+              }}
+              className="text-red-500 hover:text-red-400 transition"
+            >
+              <FaTrash size={20} />
+            </button>
           </li>
         ))}
       </ul>
     </div>
   );
 }
-
-

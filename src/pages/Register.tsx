@@ -169,7 +169,7 @@ export default function Register() {
               required
             >
               <option value="cliente">Cliente</option>
-              <option value="administrador">Administrador</option>
+              {/* <option value="administrador">Administrador</option> */}
             </select>
           </div>
         </div>

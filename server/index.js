@@ -268,31 +268,6 @@ app.get('/api/stations/:id/aqi', async (req, res) => {
   }
 });
 
-// Get pollutants comparison for a station
-// app.get('/api/stations/:id/pollutants/comparison', async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const result = await pool.query(`
-//       WITH CurrentValues AS (
-//         SELECT c.nombre as contaminante,
-//                m.valor_concentracion as valor_actual,
-//                50 as limite_permitido
-//         FROM mediciones m
-//         JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
-//         WHERE m.id_estacion = $1
-//         AND m.fecha >= NOW() - INTERVAL '1 hour'
-//         AND m.fecha <= NOW()  -- Excluir fechas futuras
-//       )
-//       SELECT *
-//       FROM CurrentValues
-//       ORDER BY valor_actual DESC
-//     `, [id]);
-//     res.json(result.rows);
-//   } catch (error) {
-//     console.error(`Error en /api/stations/${req.params.id}/pollutants/comparison:`, error);
-//     res.status(500).json({ error: error.message });
-//   }
-// });
 app.get('/api/stations/:id/pollutants/comparison', async (req, res) => {
   try {
     const { id } = req.params;
@@ -319,60 +294,29 @@ app.get('/api/stations/:id/pollutants/comparison', async (req, res) => {
 });
 
 
-app.get('/api/stations/:id/history', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(`
-      SELECT m.fecha, c.nombre as contaminante, m.valor_concentracion,
-             m.indice_calidad, m.valor_calidad
-      FROM mediciones m
-      JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
-      WHERE m.id_estacion = $1
-      AND m.fecha >= CURRENT_DATE
-      AND m.fecha < CURRENT_DATE + INTERVAL '1 day'
-      ORDER BY m.fecha DESC
-    `, [id]);
-    
-    console.log("Datos del historial diario:", result.rows);  // Agrega este log
-    
-    res.json(result.rows);
-  } catch (error) {
-    console.error(`Error en /api/stations/${req.params.id}/history:`, error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-// Agregar nuevo endpoint para estaciones cercanas
-// app.get('/api/stations/:id/nearby', async (req, res) => {
+// app.get('/api/stations/:id/history', async (req, res) => {
 //   try {
 //     const { id } = req.params;
 //     const result = await pool.query(`
-//       WITH StationLocation AS (
-//         SELECT latitud, longitud
-//         FROM estaciones
-//         WHERE id_estacion = $1
-//       )
-//       SELECT e.*
-//       FROM estaciones e, StationLocation s
-//       WHERE e.id_estacion != $1
-//       AND earth_distance(
-//         ll_to_earth(e.latitud, e.longitud),
-//         ll_to_earth(s.latitud, s.longitud)
-//       ) <= 5000  -- 5km radio
-//       ORDER BY earth_distance(
-//         ll_to_earth(e.latitud, e.longitud),
-//         ll_to_earth(s.latitud, s.longitud)
-//       )
-//       LIMIT 5;
+//       SELECT m.fecha, c.nombre as contaminante, m.valor_concentracion,
+//              m.indice_calidad, m.valor_calidad
+//       FROM mediciones m
+//       JOIN contaminantes c ON m.id_contaminante = c.id_contaminante
+//       WHERE m.id_estacion = $1
+//       AND m.fecha >= CURRENT_DATE
+//       AND m.fecha < CURRENT_DATE + INTERVAL '1 day'
+//       ORDER BY m.fecha DESC
 //     `, [id]);
-
+    
+//     console.log("Datos del historial diario:", result.rows);  // Agrega este log
+    
 //     res.json(result.rows);
 //   } catch (error) {
-//     console.error('Error al obtener estaciones cercanas:', error);
-//     res.status(500).json({ error: 'Error al obtener estaciones cercanas' });
+//     console.error(`Error en /api/stations/${req.params.id}/history:`, error);
+//     res.status(500).json({ error: error.message });
 //   }
 // });
+
 app.get('/api/stations/:id/nearby', async (req, res) => {
   try {
     const { id } = req.params;
@@ -403,24 +347,6 @@ app.get('/api/stations/:id/nearby', async (req, res) => {
   }
 });
 
-// Endpoint para crear un usuario
-// app.post('/api/users/register', async (req, res) => {
-//   try {
-//     const { nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, contraseña } = req.body;
-//     const hashedPassword = await bcrypt.hash(contraseña, 10); // Hash de contraseña
-
-//     const result = await pool.query(`
-//       INSERT INTO usuarios (nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, contraseña)
-//       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-//       RETURNING id_usuario
-//     `, [nombre, correo, ubicacion, telefono, direccion, id_region, tipo_usuario, hashedPassword]);
-
-//     res.status(201).json({ id_usuario: result.rows[0].id_usuario });
-//   } catch (error) {
-//     console.error('Error en /api/users/register:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// });
 app.post('/api/users/register', async (req, res) => {
   try {
     console.log('Datos recibidos en el servidor:', req.body); // Verificar datos recibidos
